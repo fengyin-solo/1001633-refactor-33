@@ -41,18 +41,19 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条除冰单，缺字段时说明原因而不是静默丢弃。"""
-    entry, missing = service.create_entry(payload.values)
-    if missing:
-        return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+    """登记一条除冰单，缺字段或用量非法时说明原因而不是静默丢弃。"""
+    entry, message = service.create_entry(payload.values)
+    if entry is None:
+        return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message="除冰单已登记", entry=entry)
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
-    """对单条除冰单执行安排作业、确认完成、取消作业；不允许的动作会被拦下并说明原因。"""
+    """对单条除冰单执行安排作业、确认完成、取消作业；不允许的动作或非法字段会被拦下并说明原因。"""
     action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
+    fields = {key: value for key, value in payload.values.items() if key != "action"}
+    entry, message = service.run_action(entry_id, action, fields)
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)

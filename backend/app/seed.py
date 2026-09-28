@@ -3,6 +3,27 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.deicing_validation import (
+    format_validation_errors,
+    validate_deicing_entry,
+)
+
+
+def load_seed_rows() -> dict[str, list[dict[str, Any]]]:
+    """返回各模块示例数据。
+
+    除冰单在初始化时按与登记、动作完全相同的一份字段口径校验，非法示例会在
+    启动时直接抛错，而不是把不合规数据悄悄塞进仓库。当前示例用量是占位文本，
+    按“未填报数值”处理，因此既有示例除冰单保持不变且全部合规。
+    """
+    for row in SEED_ROWS.get("deicing", []):
+        errors = validate_deicing_entry(row)
+        if errors:
+            raise ValueError(
+                f"除冰示例单 {row.get('id')} 字段不合规：{format_validation_errors(errors)}"
+            )
+    return SEED_ROWS
+
 SEED_ROWS: dict[str, list[dict[str, Any]]] = {
     "flight": [{'id': 1,
   'status': '待确认',

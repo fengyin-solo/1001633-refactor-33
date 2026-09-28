@@ -6,13 +6,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.seed import SEED_ROWS
+from app.seed import load_seed_rows
 
 
 class Store:
     def __init__(self) -> None:
+        seed_rows = load_seed_rows()
         self._tables: dict[str, list[dict[str, Any]]] = {
-            name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
+            name: [dict(row) for row in rows] for name, rows in seed_rows.items()
         }
 
     def module_names(self) -> list[str]:
