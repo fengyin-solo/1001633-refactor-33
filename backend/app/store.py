@@ -7,10 +7,17 @@ from __future__ import annotations
 from typing import Any
 
 from app.seed import SEED_ROWS
+from app.services.deicing_rules import format_errors, validate_deicing_fields
 
 
 class Store:
     def __init__(self) -> None:
+        # 初始化口径与登记完全相同：示例数据同样要过一遍必填与取值范围，
+        # 非法种子在启动时直接暴露，不再静默入库。
+        for row in SEED_ROWS.get("deicing", []):
+            errors = validate_deicing_fields(row, required=True)
+            if errors:
+                raise ValueError(f"除冰单示例数据 {row.get('id')} 校验失败：{format_errors(errors)}")
         self._tables: dict[str, list[dict[str, Any]]] = {
             name: [dict(row) for row in rows] for name, rows in SEED_ROWS.items()
         }

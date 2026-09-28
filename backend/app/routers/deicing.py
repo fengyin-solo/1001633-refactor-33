@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.schemas import ActionResult, EntryPayload, PageResult
 from app.services.deicing import DeicingService
+from app.services.deicing_rules import format_errors
 
 router = APIRouter(prefix="/api/deicing", tags=["除冰作业"])
 
@@ -41,18 +42,18 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条除冰单，缺字段时说明原因而不是静默丢弃。"""
-    entry, missing = service.create_entry(payload.values)
-    if missing:
-        return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+    """登记一条除冰单，缺字段或取值越界时用统一说明告知原因，而不是静默丢弃。"""
+    entry, errors = service.create_entry(payload.values)
+    if errors:
+        return ActionResult(ok=False, message=format_errors(errors))
     return ActionResult(ok=True, message="除冰单已登记", entry=entry)
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
-    """对单条除冰单执行安排作业、确认完成、取消作业；不允许的动作会被拦下并说明原因。"""
-    action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
+    """对单条除冰单执行安排作业、确认完成、取消作业；字段越界或动作不允许都会
+    用同一套校验说明拦下。"""
+    entry, message = service.run_action(entry_id, payload.values)
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
